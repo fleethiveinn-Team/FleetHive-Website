@@ -141,6 +141,25 @@ async function finalizeIfSuccess(tx, source) {
     replyTo: tx.customer && tx.customer.email,
   });
 
+  // Customer receipt — separate email, sent to the customer's own address
+  // rather than the FleetHive team inbox. Also best-effort: a failure here
+  // never blocks marking the order PAID.
+  if (tx.customer && tx.customer.email) {
+    const orderLabel = meta.planType === 'tagplan' ? 'FleetHive Tag Plan order' : meta.partnershipType ? 'FleetHive partnership fee' : `FleetHive ${meta.plan || 'subscription'} order`;
+    await sendEmail({
+      subject: `Payment received — ${orderLabel} [${tx.reference}]`,
+      intro: `Hi${meta.customerName ? ' ' + meta.customerName : ''}, thanks — we've received your payment for your ${orderLabel}. Our team will be in touch with next steps.`,
+      rows: [
+        ['Order', orderLabel],
+        ['Amount paid', `${symbol}${(tx.amount / 100).toLocaleString()}`],
+        ['Reference', tx.reference],
+        ['Date', new Date(tx.paid_at || Date.now()).toLocaleString()],
+      ],
+      toEmail: tx.customer.email,
+      replyTo: 'support@fleethive.in',
+    });
+  }
+
   const order = {
     status: 'PAID',
     paystackStatus: tx.status,
