@@ -84,5 +84,25 @@ exports.handler = async function (event) {
   if (!result.ok) {
     return { statusCode: result.status, body: JSON.stringify({ error: result.error }) };
   }
+
+  // Customer confirmation — best-effort, doesn't affect the response to the
+  // browser either way (the team notification above is the one that matters
+  // for the order to actually get processed).
+  if (order.email) {
+    const custRows = [
+      ['Order', isTagPlan ? 'FleetHive Tag Plan order' : `FleetHive ${order.plan || 'subscription'} order`],
+      ['Billing', order.billing],
+      ['Total amount', order.totalAmount],
+      ['Status', order.paymentStatus || 'PENDING VERIFICATION'],
+    ];
+    await sendEmail({
+      subject: `We've received your FleetHive order`,
+      intro: `Hi${order.firstName ? ' ' + order.firstName : ''}, thanks for your order. We've recorded it and it's currently pending payment verification — our team will confirm your transfer and follow up shortly.`,
+      rows: custRows,
+      toEmail: order.email,
+      replyTo: 'support@fleethive.in',
+    });
+  }
+
   return { statusCode: 200, body: JSON.stringify({ ok: true }) };
 };
