@@ -123,15 +123,12 @@
         <button class="btn btn-outline" onclick="selectPlan('prime')">Choose Prime</button>
       </div>
       <div class="price-card tag-card" data-card="tagplan">
-        <div class="price-name">Tag Plan</div>
-        <p class="tag-card-desc">Track packages, orders and assets with a reusable FleetTag.</p>
+        <div class="price-name">Tag</div>
         <div class="price-amt-wrap" data-plan="tagplan"><div class="price-amt">₦3,000<span>/mo</span></div></div>
-        <div class="price-save-note" style="display:none;">Save ₦6,000</div>
-        <div class="price-note">Starts at ₦35,000 one-time — first 3 months free.</div>
         <ul class="price-feats" style="margin-top:22px;">
           <li>Reusable FleetTag</li><li>Track vehicles, assets, parcels or orders</li><li>3 months free subscription</li><li>Technical setup &amp; configuration</li>
         </ul>
-        <button class="btn btn-outline" onclick="selectPlan('tagplan')">Choose Tag Plan</button>
+        <button class="btn btn-outline" onclick="selectPlan('tagplan')">Choose Tag</button>
       </div>
     </div>
   </div>
@@ -146,7 +143,7 @@
     <!-- ---- SUBSCRIPTION PATH (Lite / Pro / Prime) ---- -->
     <div id="subFlow" style="display:none;">
       <h2 class="form-page-title">Start Tracking with FleetHive</h2>
-      <p class="form-intro" style="margin-top:-10px; margin-bottom:22px;">Complete this form to activate your tracking subscription. Your selected package is already applied below.</p>
+      <p class="form-intro" style="margin-top:14px; margin-bottom:22px;">Complete this form to activate your tracking subscription. Your selected package is already applied below.</p>
 
       <div class="journey-wrap">
         <h4>What to expect</h4>
@@ -405,7 +402,7 @@
           <div class="bank-row"><span class="br-label">Account Number</span><span class="br-val" id="bankAcctNum">8137832012</span><button class="copy-btn" id="copyAcct">Copy</button></div>
           <div class="bank-row"><span class="br-label">Bank</span><span class="br-val">Moniepoint MFB</span></div>
         </div>
-        <p class="form-help" style="margin:14px 0;">Transfer the exact amount shown above using your mobile banking app or bank transfer.</p>
+        <p class="form-help" id="bankAmountNote" style="margin:14px 0;">Transfer the exact amount shown above using your mobile banking app or bank transfer.</p>
         <button class="btn btn-outline" id="btnBankDone" style="width:100%; justify-content:center;">I Have Made the Transfer</button>
         <p class="form-help" id="bankMsg" style="margin-top:10px;"></p>
       </div>

@@ -42,6 +42,26 @@ exports.handler = async function (event) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing/invalid email or amount' }) };
   }
 
+  // Amount-integrity check: the browser also sends metadata.totalAmount
+  // (the full order total it calculated) and metadata.flexible. We
+  // recompute what "amount" SHOULD be from those two values and reject the
+  // request if they don't agree — this catches a tampered/mismatched
+  // checkout amount (e.g. someone paying the 50% flexible rate for a
+  // full-price order) before Paystack is ever contacted.
+  //
+  // NOTE: this does not independently recompute FleetHive's full pricing
+  // table (plan/vehicle/add-on/Hive Credit prices) from scratch — see
+  // SETUP.md "What remains" / the audit report for that follow-up.
+  const meta = metadata || {};
+  if (typeof meta.totalAmount === 'number' && meta.totalAmount > 0) {
+    const expected = meta.flexible ? Math.round(meta.totalAmount / 2) : meta.totalAmount;
+    const tolerance = 5; // naira, to allow for rounding
+    if (Math.abs(expected - amount) > tolerance) {
+      console.error(`paystack-initialize amount mismatch: expected ~${expected}, got ${amount}`, meta);
+      return { statusCode: 400, body: JSON.stringify({ error: 'Amount does not match the expected order total. Please refresh and try again.' }) };
+    }
+  }
+
   const amountKobo = Math.round(amount * 100);
 
   try {

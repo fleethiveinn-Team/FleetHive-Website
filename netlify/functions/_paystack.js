@@ -122,21 +122,57 @@ async function finalizeIfSuccess(tx, source) {
 
   const meta = tx.metadata || {};
   const symbol = tx.currency === 'USD' ? '$' : '₦';
+  const money = (n) => (typeof n === 'number' ? `${symbol}${n.toLocaleString()}` : n || 'Not provided');
+  const isTagPlan = meta.planType === 'tagplan';
+  const orderTypeLabel = isTagPlan
+    ? 'Tag Plan'
+    : meta.partnershipType
+    ? `Partner Application — ${meta.plan || meta.partnershipType}`
+    : `${meta.plan || 'Subscription'} Plan`;
+
+  // NEW FLEETHIVE CUSTOMER — internal notification. Includes everything the
+  // team needs to action the order: contact info, plan, vehicle/tag
+  // details, location, amount, payment method and flexible-payment split
+  // (if applicable).
   const rows = [
-    ['Order type', meta.planType === 'tagplan' ? 'Tag Plan' : meta.partnershipType ? `Partner Application — ${meta.plan || meta.partnershipType}` : `${meta.plan || 'Subscription'} Plan`],
-    ['Billing', meta.billing],
-    ['Customer', meta.customerName],
-    ['Phone', meta.phone],
-    ['Amount paid', `${symbol}${(tx.amount / 100).toLocaleString()}`],
-    ['Paystack reference', tx.reference],
+    ['Name', meta.customerName],
     ['Email', tx.customer && tx.customer.email],
-    ['Date/time', new Date(tx.paid_at || Date.now()).toLocaleString()],
+    ['Phone', meta.phone],
+    ['Plan', orderTypeLabel],
+    ['Billing', meta.billing],
+    ['Vehicle type', meta.vehicleType],
+    ['Vehicle year', meta.vehicleYear],
+    ['Vehicle count', meta.vehCount],
+    ['Amount paid', money(tx.amount / 100)],
+    ['Payment reference', tx.reference],
+    ['Location', meta.location],
+    ['Payment method', 'Paystack'],
+    ['Timestamp', new Date(tx.paid_at || Date.now()).toLocaleString()],
     ['Confirmed via', source],
   ];
+  if (isTagPlan) {
+    rows.push(
+      ['Number of Tags', meta.tagCount],
+      ['Total amount', money(meta.totalAmount)],
+      ['Subscription option', meta.billing]
+    );
+  }
+  if (meta.addons) rows.push(['Add-ons', meta.addons]);
+  if (meta.addedPlans) rows.push(['Additional plans', meta.addedPlans]);
+  if (meta.hiveCredits) rows.push(['Hive Credits', money(meta.hiveCredits)]);
+  if (meta.flexible) {
+    rows.push(
+      ['Flexible payment', 'Yes'],
+      ['Total order amount', money(meta.totalAmount)],
+      ['Amount paid today', money(tx.amount / 100)],
+      ['Remaining balance', money(meta.remainingBalance)],
+      ['Monthly installment', `${money(meta.monthlyInstallment)} for ${meta.remainingMonths || 3} months`]
+    );
+  }
   // Best-effort — the order is still marked PAID even if this email fails;
   // we don't want an email hiccup to block a genuinely verified payment.
   await sendEmail({
-    subject: `✅ Paid — FleetHive order [${tx.reference}]`,
+    subject: `NEW FLEETHIVE CUSTOMER — ✅ Paid [${tx.reference}]`,
     rows,
     replyTo: tx.customer && tx.customer.email,
   });
@@ -145,16 +181,28 @@ async function finalizeIfSuccess(tx, source) {
   // rather than the FleetHive team inbox. Also best-effort: a failure here
   // never blocks marking the order PAID.
   if (tx.customer && tx.customer.email) {
-    const orderLabel = meta.planType === 'tagplan' ? 'FleetHive Tag Plan order' : meta.partnershipType ? 'FleetHive partnership fee' : `FleetHive ${meta.plan || 'subscription'} order`;
+    const orderLabel = isTagPlan ? 'FleetHive Tag Plan order' : meta.partnershipType ? 'FleetHive partnership fee' : `FleetHive ${meta.plan || 'subscription'} order`;
+    const custRows = [
+      ['Customer name', meta.customerName],
+      ['Plan', orderTypeLabel],
+      ['Amount paid', money(tx.amount / 100)],
+      ['Payment reference', tx.reference],
+      ['Payment status', 'Successful'],
+      ['Next steps', 'Our team will contact you within 24 hours to arrange installation/delivery.'],
+      ['Support', 'support@fleethive.in · +234 702 577 1522'],
+    ];
+    if (meta.flexible) {
+      custRows.splice(4, 0,
+        ['Total order amount', money(meta.totalAmount)],
+        ['Amount paid today', money(tx.amount / 100)],
+        ['Remaining balance', money(meta.remainingBalance)],
+        ['Monthly installment', `${money(meta.monthlyInstallment)} for ${meta.remainingMonths || 3} months`]
+      );
+    }
     await sendEmail({
-      subject: `Payment received — ${orderLabel} [${tx.reference}]`,
-      intro: `Hi${meta.customerName ? ' ' + meta.customerName : ''}, thanks — we've received your payment for your ${orderLabel}. Our team will be in touch with next steps.`,
-      rows: [
-        ['Order', orderLabel],
-        ['Amount paid', `${symbol}${(tx.amount / 100).toLocaleString()}`],
-        ['Reference', tx.reference],
-        ['Date', new Date(tx.paid_at || Date.now()).toLocaleString()],
-      ],
+      subject: `Payment successful — Welcome to FleetHive! [${tx.reference}]`,
+      intro: `Hi${meta.customerName ? ' ' + meta.customerName : ''}, payment successful — welcome to FleetHive! We've received your payment for your ${orderLabel}. Our team will be in touch with next steps.`,
+      rows: custRows,
       toEmail: tx.customer.email,
       replyTo: 'support@fleethive.in',
     });
