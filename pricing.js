@@ -684,6 +684,21 @@
       btn.disabled = true; btn.textContent = 'Redirecting to Paystack…';
       var payload = buildOrderPayload(cust);
 
+      // hardwareAddonIds / softwareAddonIds / addedPlansData carry the raw
+      // selection ids/structure (not just the human-readable label strings
+      // in `addons` / `addedPlans`) so paystack-initialize.js can
+      // independently recompute the order total server-side via
+      // _pricing.js instead of trusting `totalAmount` on its own.
+      var hardwareAddonIds = [];
+      HARDWARE_ADDONS.forEach(function(a){ if(state.hardwareAddons[a.id]) hardwareAddonIds.push(a.id); });
+      var softwareAddonIds = [];
+      SOFTWARE_ADDONS.forEach(function(a){ if(state.softwareAddons[a.id]) softwareAddonIds.push(a.id); });
+      var addedPlansData = state.addedPlans.map(function(entry){
+        return entry.plan === 'tagplan'
+          ? { plan:'tagplan', count: entry.count }
+          : { plan: entry.plan, vehicleType: entry.vehicleType, vehicleYear: entry.vehicleYear, count: entry.count, billing: state.billing };
+      });
+
       var metadata = {
         plan: payload.plan, planType: state.plan, billing: payload.billing,
         customerName: [cust.surname, cust.firstName].filter(Boolean).join(' '), phone: cust.phone,
@@ -692,6 +707,7 @@
         tagCount: cust.tagCount || null, tagUse: cust.tagUse || null,
         location: [cust.city || cust.installCity, cust.state].filter(Boolean).join(', ') || cust.address || null,
         addons: payload.addons || null, addedPlans: payload.addedPlans || null,
+        hardwareAddonIds: hardwareAddonIds, softwareAddonIds: softwareAddonIds, addedPlansData: addedPlansData,
         hiveCredits: state.hiveCredits || null
       };
       if(state.flexible){
